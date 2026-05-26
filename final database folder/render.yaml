@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: student-manager-api
+    runtime: dotnet
+    rootDir: Student Manager Database (Assignment) -/StudentManager/backend/StudentApi
+    buildCommand: dotnet publish -c Release -o ./publish
+    startCommand: dotnet ./publish/StudentApi.dll
+    envVars:
+      - key: DATABASE_URL
+        sync: false        # You will paste the Supabase URL manually in Render dashboard
+      - key: FRONTEND_URL
+        sync: false        # You will paste your Vercel URL manually in Render dashboard

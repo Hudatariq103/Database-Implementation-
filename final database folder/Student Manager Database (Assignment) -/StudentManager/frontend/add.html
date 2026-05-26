@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add / Edit Student</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <h1>Student Record Manager</h1>
+    <a href="index.html" class="btn secondary">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 12L3 7l6-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Back
+    </a>
+  </header>
+
+  <main>
+    <div class="form-card">
+      <h2 id="formTitle">Add Student</h2>
+      <p class="subtitle" id="formSubtitle">Fill in the details below to register a new student.</p>
+      <div class="form-divider"></div>
+      <div id="message"></div>
+
+      <form id="studentForm">
+        <div class="form-group">
+          <label for="name">Full Name <span>*</span></label>
+          <input type="text" id="name" placeholder="e.g. Ali Hassan" autocomplete="off" />
+          <span class="error" id="nameError"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address <span>*</span></label>
+          <input type="email" id="email" placeholder="e.g. ali@example.com" autocomplete="off" />
+          <span class="error" id="emailError"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="course">Course <span>*</span></label>
+          <input type="text" id="course" placeholder="e.g. Computer Science" autocomplete="off" />
+          <span class="error" id="courseError"></span>
+        </div>
+
+        <div class="form-divider"></div>
+        <div class="form-actions">
+          <a href="index.html" class="btn secondary">Cancel</a>
+          <button type="submit" class="btn" id="submitBtn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Save Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("id");
+
+    if (editId) {
+      document.getElementById("formTitle").textContent = "Edit Student";
+      document.getElementById("formSubtitle").textContent = "Update the information below for this student.";
+      document.getElementById("submitBtn").innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Update Student
+      `;
+
+      fetch(`${API_URL}/${editId}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Not found");
+          return res.json();
+        })
+        .then(student => {
+          document.getElementById("name").value = student.name;
+          document.getElementById("email").value = student.email;
+          document.getElementById("course").value = student.course;
+        })
+        .catch(() => showMessage("Failed to load student data.", "error"));
+    }
+
+    document.getElementById("studentForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      // Clear previous errors
+      ["name","email","course"].forEach(f => {
+        document.getElementById(f + "Error").textContent = "";
+        document.getElementById(f).classList.remove("invalid");
+      });
+
+      const name   = document.getElementById("name").value.trim();
+      const email  = document.getElementById("email").value.trim();
+      const course = document.getElementById("course").value.trim();
+
+      // Validate
+      let valid = true;
+      if (!name) {
+        document.getElementById("nameError").textContent = "Name is required.";
+        document.getElementById("name").classList.add("invalid");
+        valid = false;
+      }
+      if (!email || !email.includes("@")) {
+        document.getElementById("emailError").textContent = "A valid email address is required.";
+        document.getElementById("email").classList.add("invalid");
+        valid = false;
+      }
+      if (!course) {
+        document.getElementById("courseError").textContent = "Course is required.";
+        document.getElementById("course").classList.add("invalid");
+        valid = false;
+      }
+      if (!valid) return;
+
+      // Disable button to prevent double-submit
+      const btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      const studentData = { name, email, course };
+
+      try {
+        let res;
+
+        if (editId) {
+          res = await fetch(`${API_URL}/${editId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: parseInt(editId), ...studentData })
+          });
+        } else {
+          res = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(studentData)
+          });
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || "Server returned an error");
+        }
+
+        // ✅ SUCCESS — redirect back to main page with a flag
+        sessionStorage.setItem("successMsg", editId ? "Student updated successfully!" : "Student added successfully!");
+        window.location.href = "index.html";
+
+      } catch (err) {
+        console.error("Save error:", err);
+        showMessage("Error: " + err.message, "error");
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ${editId ? "Update Student" : "Save Student"}
+        `;
+      }
+    });
+  </script>
+
+</body>
+</html>
